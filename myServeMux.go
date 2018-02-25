@@ -1,13 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"sync"
 )
 
 type muxFunc func(http.ResponseWriter, *http.Request)
 
-type myMux struct {
+type MyMux struct {
 	mu sync.RWMutex
 	m  map[string]muxEntry
 }
@@ -17,15 +18,18 @@ type muxEntry struct {
 	pattern string
 }
 
-func (mux *myMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (mux *MyMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	f := mux.configMuxFunc(r)
-	f(w, r)
+	if f != nil {
+		f(w, r)
+	}
 }
 
-func (mux *myMux) configMuxFunc(r *http.Request) muxFunc {
+func (mux *MyMux) configMuxFunc(r *http.Request) muxFunc {
 	mux.mu.RLock()
 	defer mux.mu.RUnlock()
 
+	fmt.Println(r.URL.Path)
 	v, ok := mux.m[r.URL.Path]
 
 	if ok {
@@ -35,7 +39,7 @@ func (mux *myMux) configMuxFunc(r *http.Request) muxFunc {
 	return nil
 }
 
-func (mux *myMux) addMuxFunc(pattern string, handle muxFunc) {
+func (mux *MyMux) AddMuxFunc(pattern string, handle muxFunc) {
 	mux.mu.RLock()
 	defer mux.mu.RUnlock()
 
