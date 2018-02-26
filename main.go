@@ -1,18 +1,17 @@
 package main
 
 import (
+	"SimpleGo/Router"
+	"SimpleGo/controllers"
 	"fmt"
 	"net/http"
 )
 
-func helloworld(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "hellor world")
-}
-
 func main() {
-	mux := new(MyMux)
-	mux.AddMuxFunc("/", helloworld)
-	//http.HandleFunc("/", helloworld)
+	mux := new(Router.MyMux)
+	mux.AddController("/", &controllers.LYLoginController{})
+	mux.Get("/hello", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "hellor world! Get")
+	})
 	http.ListenAndServe("127.0.0.1:9090", mux)
-
 }
