@@ -4,28 +4,30 @@ import (
 	"net/http"
 )
 
-type Controller struct {
+type Context struct {
 	R      *http.Request
 	W      http.ResponseWriter
 	Params map[string]string
 }
 
+type Controller struct {
+	Ctx *Context
+}
+
 type ControllerInterface interface {
-	Init(w http.ResponseWriter, r *http.Request, params map[string]string)
+	Init(ctx *Context)
 	Get()
 	Post()
 }
 
-func (c *Controller) Init(w http.ResponseWriter, r *http.Request, params map[string]string) {
-	c.W = w
-	c.R = r
-	c.Params = params
+func (c *Controller) Init(ctx *Context) {
+	c.Ctx = ctx
 }
 
 func (c *Controller) Get() {
-	http.Error(c.W, "Method Not Allowed", 405)
+	http.Error(c.Ctx.W, "Method Not Allowed", 405)
 }
 
 func (c *Controller) Post() {
-	http.Error(c.W, "Method Not Allowed", 405)
+	http.Error(c.Ctx.W, "Method Not Allowed", 405)
 }

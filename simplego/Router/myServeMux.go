@@ -1,7 +1,9 @@
 package Router
 
 import (
+	"fmt"
 	"net/http"
+	"reflect"
 	"regexp"
 	"strings"
 	"sync"
@@ -15,23 +17,26 @@ type MyMux struct {
 }
 
 type controllerInfo struct {
-	params     map[int]string
-	regex      *regexp.Regexp
-	controller ControllerInterface
-	f          MuxFunc
+	params         map[int]string
+	regex          *regexp.Regexp
+	controllerType reflect.Type
+	f              MuxFunc
 }
 
 func (mux *MyMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	conInfo, params := mux.configControllerInfo(r)
+	if conInfo.controllerType != nil {
+		controller := reflect.New(conInfo.controllerType).Elem()
+		method := controller.MethodByName("Init")
 
-	if conInfo.controller != nil {
-		controller := conInfo.controller
-		controller.Init(w, r, params)
+		fmt.Println(w, r, params)
+		ctx := &Context{W: w, R: r, Params: params}
+		method.Call([]reflect.Value{reflect.ValueOf(ctx)})
 
 		if r.Method == "GET" {
-			controller.Get()
+			controller.MethodByName("Get").Call(make([]reflect.Value, 0))
 		} else if r.Method == "POST" {
-			controller.Post()
+			controller.MethodByName("Post").Call(make([]reflect.Value, 0))
 		} else {
 			http.Error(w, "Method Not Match", 405)
 		}
@@ -106,6 +111,8 @@ func (mux *MyMux) addController(pattern string, controller ControllerInterface, 
 		return
 	}
 
-	conInfor := &controllerInfo{params: params, regex: regex, controller: controller, f: f}
+	//这边设置有讲究的，需要明白elem()的意义，indirect的意义才行
+	//conInfor := &controllerInfo{params: params, regex: regex, controllerType: reflect.Indirect(reflect.ValueOf(controller)).Type(), f: f}
+	conInfor := &controllerInfo{params: params, regex: regex, controllerType: reflect.TypeOf(controller), f: f}
 	mux.routes = append(mux.routes, conInfor)
 }

@@ -10,5 +10,5 @@ type LYLoginController struct {
 }
 
 func (c *LYLoginController) Get() {
-	fmt.Fprintf(c.W, fmt.Sprint(c.Params))
+	fmt.Fprintf(c.Ctx.W, fmt.Sprint(c.Ctx.Params))
 }
