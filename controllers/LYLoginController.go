@@ -1,7 +1,7 @@
 package controllers
 
 import (
-	"SimpleGo/Router"
+	"SimpleGo/simplego/Router"
 	"fmt"
 )
 
@@ -10,5 +10,5 @@ type LYLoginController struct {
 }
 
 func (c *LYLoginController) Get() {
-	fmt.Fprintf(c.W, "hellor world! Controller")
+	fmt.Fprintf(c.W, fmt.Sprint(c.Params))
 }

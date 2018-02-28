@@ -1,17 +1,17 @@
 package main
 
 import (
-	"SimpleGo/Router"
 	"SimpleGo/controllers"
+	"SimpleGo/simplego"
 	"fmt"
 	"net/http"
 )
 
 func main() {
-	mux := new(Router.MyMux)
-	mux.AddController("/", &controllers.LYLoginController{})
-	mux.Get("/hello", func(w http.ResponseWriter, r *http.Request) {
+	simplego.Add("/", &controllers.LYLoginController{})
+	simplego.Get("/hello", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "hellor world! Get")
 	})
-	http.ListenAndServe("127.0.0.1:9090", mux)
+	simplego.Add("/aaa/bbb/:id([\\w]+)/:username([1-9]+)", &controllers.LYLoginController{})
+	simplego.Run()
 }
