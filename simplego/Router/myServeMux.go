@@ -1,12 +1,15 @@
 package Router
 
 import (
-	"fmt"
 	"net/http"
 	"reflect"
 	"regexp"
 	"strings"
 	"sync"
+)
+
+var (
+	StaticPathMap map[string]string
 )
 
 type MuxFunc func(http.ResponseWriter, *http.Request)
@@ -20,70 +23,80 @@ type controllerInfo struct {
 	params         map[int]string
 	regex          *regexp.Regexp
 	controllerType reflect.Type
-	f              MuxFunc
+	fmap           map[string]MuxFunc
+	pattern        string
+}
+
+func init() {
+	StaticPathMap = make(map[string]string)
 }
 
 func (mux *MyMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	conInfo, params := mux.configControllerInfo(r)
+	requestPath := r.URL.Path
+
+	for url, path := range StaticPathMap {
+		if strings.HasPrefix(requestPath, url) {
+			file := path + requestPath[len(url):]
+			http.ServeFile(w, r, file)
+			return
+		}
+	}
+
+	conInfo, params := mux.configControllerInfo(requestPath)
 	if conInfo.controllerType != nil {
-		controller := reflect.New(conInfo.controllerType).Elem()
+		controller := reflect.New(conInfo.controllerType)
 		method := controller.MethodByName("Init")
 
-		fmt.Println(w, r, params)
 		ctx := &Context{W: w, R: r, Params: params}
 		method.Call([]reflect.Value{reflect.ValueOf(ctx)})
 
+		isMethodMatch := true
 		if r.Method == "GET" {
-			controller.MethodByName("Get").Call(make([]reflect.Value, 0))
+			controller.MethodByName("Get").Call(nil)
 		} else if r.Method == "POST" {
-			controller.MethodByName("Post").Call(make([]reflect.Value, 0))
+			controller.MethodByName("Post").Call(nil)
 		} else {
+			isMethodMatch = false
 			http.Error(w, "Method Not Match", 405)
 		}
-	} else if conInfo.f != nil {
-		conInfo.f(w, r)
+
+		if isMethodMatch {
+			controller.MethodByName("Render").Call(nil)
+		}
+
+	} else if conInfo.fmap != nil {
+		if f, isExist := conInfo.fmap[r.Method]; isExist {
+			f(w, r)
+		}
 	} else {
 		http.NotFound(w, r)
 	}
 }
 
-func (mux *MyMux) configControllerInfo(r *http.Request) (*controllerInfo, map[string]string) {
-	mux.mu.RLock()
-	defer mux.mu.RUnlock()
-
-	requestPath := r.URL.Path
-	for _, conInfor := range mux.routes {
-		if !conInfor.regex.MatchString(requestPath) {
-			continue
-		}
-
-		matches := conInfor.regex.FindStringSubmatch(requestPath)
-		if len(matches[0]) != len(requestPath) {
-			continue
-		}
-
-		params := make(map[string]string)
-		if len(conInfor.params) == len(matches)-1 {
-			for i, match := range matches[1:] {
-				params[conInfor.params[i]] = match
-			}
-		}
-
-		return conInfor, params
-	}
-
-	return &controllerInfo{}, nil
-}
-
 func (mux *MyMux) Router(pattern string, controller ControllerInterface) {
-	mux.addController(pattern, controller, nil)
+	mux.addControllerInfo(pattern, controller, nil)
 }
 
 func (mux *MyMux) Get(pattern string, f MuxFunc) {
-	mux.addController(pattern, nil, f)
+	mux.addMethods(pattern, f, "GET")
 }
 
-func (mux *MyMux) addController(pattern string, controller ControllerInterface, f MuxFunc) {
+func (mux *MyMux) Post(pattern string, f MuxFunc) {
+	mux.addMethods(pattern, f, "POST")
+}
+
+func (mux *MyMux) addMethods(pattern string, f MuxFunc, methodName string) {
+	if conInfor, isExist := mux.isControllerExistWithPattern(pattern); isExist {
+		fmap := conInfor.fmap
+		fmap[methodName] = f
+	} else {
+		fmap := make(map[string]MuxFunc, 1)
+		fmap[methodName] = f
+		mux.addControllerInfo(pattern, nil, fmap)
+	}
+}
+
+func (mux *MyMux) addControllerInfo(pattern string, controller ControllerInterface, fmap map[string]MuxFunc) {
 	mux.mu.RLock()
 	defer mux.mu.RUnlock()
 
@@ -111,8 +124,53 @@ func (mux *MyMux) addController(pattern string, controller ControllerInterface, 
 		return
 	}
 
-	//这边设置有讲究的，需要明白elem()的意义，indirect的意义才行
-	//conInfor := &controllerInfo{params: params, regex: regex, controllerType: reflect.Indirect(reflect.ValueOf(controller)).Type(), f: f}
-	conInfor := &controllerInfo{params: params, regex: regex, controllerType: reflect.TypeOf(controller), f: f}
+	var conInfor *controllerInfo
+	if controller != nil {
+		conInfor = &controllerInfo{params: params, regex: regex, pattern: pattern, controllerType: reflect.Indirect(reflect.ValueOf(controller)).Type(), fmap: nil}
+	} else {
+		conInfor = &controllerInfo{params: params, regex: regex, pattern: pattern, controllerType: nil, fmap: fmap}
+	}
+
 	mux.routes = append(mux.routes, conInfor)
+}
+
+func (mux *MyMux) configControllerInfo(requestPath string) (*controllerInfo, map[string]string) {
+	mux.mu.RLock()
+	defer mux.mu.RUnlock()
+
+	for _, conInfor := range mux.routes {
+		if !conInfor.regex.MatchString(requestPath) {
+			continue
+		}
+
+		matches := conInfor.regex.FindStringSubmatch(requestPath)
+		if len(matches[0]) != len(requestPath) {
+			continue
+		}
+
+		params := make(map[string]string)
+		if len(conInfor.params) == len(matches)-1 {
+			for i, match := range matches[1:] {
+				params[conInfor.params[i]] = match
+			}
+		}
+		return conInfor, params
+	}
+
+	return &controllerInfo{}, nil
+}
+
+func (mux *MyMux) isControllerExistWithPattern(pattern string) (*controllerInfo, bool) {
+	mux.mu.RLock()
+	defer mux.mu.RUnlock()
+
+	for _, conInfor := range mux.routes {
+		if conInfor.pattern != pattern {
+			continue
+		}
+
+		return conInfor, true
+	}
+
+	return &controllerInfo{}, false
 }

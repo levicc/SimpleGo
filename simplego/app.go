@@ -31,10 +31,18 @@ func Run() {
 	SimpleApp.Run()
 }
 
+func SetStaticPath(url string, path string) {
+	Router.StaticPathMap[url] = path
+}
+
 func Add(pattern string, controller Router.ControllerInterface) {
 	SimpleApp.Handlers.Router(pattern, controller)
 }
 
 func Get(pattern string, f Router.MuxFunc) {
 	SimpleApp.Handlers.Get(pattern, f)
+}
+
+func Post(pattern string, f Router.MuxFunc) {
+	SimpleApp.Handlers.Post(pattern, f)
 }
