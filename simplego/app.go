@@ -24,7 +24,7 @@ func NewApp() *App {
 }
 
 func (app *App) Run() {
-	http.ListenAndServe("127.0.0.1:9090", SimpleApp.Handlers)
+	http.ListenAndServe("127.0.0.1:9091", SimpleApp.Handlers)
 }
 
 func Run() {

@@ -30,6 +30,16 @@ func main() {
 
 	simplego.Add("/", &controllers.LYLoginController{})
 	simplego.Get("/hello", func(w http.ResponseWriter, r *http.Request) {
+		// expiration := time.Now()
+		// expiration = expiration.AddDate(1, 0, 0)
+		// cookie := &http.Cookie{Name: "dianping", Value: "222222", Expires: expiration, Path: "/"}
+		// http.SetCookie(w, cookie)
+
+		cookies := r.Cookies()
+		for _, cookie := range cookies {
+			fmt.Println(cookie.Name, cookie.Value)
+		}
+
 		if t, error := template.ParseFiles("views/login.html"); error == nil {
 			t.Execute(w, nil)
 		}
