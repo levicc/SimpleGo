@@ -1,4 +1,4 @@
-package Router
+package simplego
 
 import (
 	"net/http"
@@ -32,6 +32,7 @@ func init() {
 }
 
 func (mux *MyMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+
 	requestPath := r.URL.Path
 
 	for url, path := range StaticPathMap {

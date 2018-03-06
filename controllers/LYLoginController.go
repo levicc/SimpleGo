@@ -1,26 +1,37 @@
 package controllers
 
 import (
-	"SimpleGo/simplego/Router"
+	"SimpleGo/simplego"
 	"fmt"
 )
 
 type LYLoginController struct {
-	Router.Controller
+	simplego.Controller
 }
 
 func (c *LYLoginController) Get() {
-	cookies := c.Ctx.R.Cookies()
-	for _, cookie := range cookies {
-		fmt.Println(cookie.Name, cookie.Value)
-	}
+	session := c.GetSession()
+	userName := session.Get("username")
 
-	c.IsNeedRender = true
-	c.TplName = "login.html"
+	if userName == nil || userName == "" {
+		c.IsNeedRender = true
+		c.TplName = "login.html"
+	} else {
+		c.IsNeedRender = false
+		fmt.Fprintln(c.Ctx.W, fmt.Sprintf("hello %s", userName))
+	}
 }
 
 func (c *LYLoginController) Post() {
-	c.Data = map[interface{}]interface{}{"name": c.Input().Get("name")}
-	c.IsNeedRender = true
-	c.TplName = "login.html"
+	userName := c.Input().Get("name")
+
+	if userName == "luyang" {
+		sess := c.GetSession()
+		sess.Set("username", userName)
+		c.IsNeedRender = false
+		fmt.Fprintln(c.Ctx.W, fmt.Sprintf("hello %s", userName))
+	} else {
+		c.IsNeedRender = true
+		c.TplName = "login.html"
+	}
 }

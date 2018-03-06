@@ -1,12 +1,13 @@
 package simplego
 
 import (
-	"SimpleGo/simplego/Router"
+	"SimpleGo/simplego/session"
 	"net/http"
 )
 
 var (
-	SimpleApp *App
+	SimpleApp     *App
+	GlobalSession *session.SessionManager
 )
 
 func init() {
@@ -14,13 +15,21 @@ func init() {
 }
 
 type App struct {
-	Handlers *Router.MyMux
+	Handlers *MyMux
 	Server   *http.Server
 }
 
 func NewApp() *App {
-	app := &App{Handlers: new(Router.MyMux), Server: &http.Server{}}
+	app := &App{Handlers: new(MyMux), Server: &http.Server{}}
 	return app
+}
+
+func GetGlobelSession() *session.SessionManager {
+	if GlobalSession == nil {
+		GlobalSession, _ = session.NewManager("memory", "sessionId", 3600)
+		go GlobalSession.GC()
+	}
+	return GlobalSession
 }
 
 func (app *App) Run() {
@@ -32,17 +41,17 @@ func Run() {
 }
 
 func SetStaticPath(url string, path string) {
-	Router.StaticPathMap[url] = path
+	StaticPathMap[url] = path
 }
 
-func Add(pattern string, controller Router.ControllerInterface) {
+func Add(pattern string, controller ControllerInterface) {
 	SimpleApp.Handlers.Router(pattern, controller)
 }
 
-func Get(pattern string, f Router.MuxFunc) {
+func Get(pattern string, f MuxFunc) {
 	SimpleApp.Handlers.Get(pattern, f)
 }
 
-func Post(pattern string, f Router.MuxFunc) {
+func Post(pattern string, f MuxFunc) {
 	SimpleApp.Handlers.Post(pattern, f)
 }

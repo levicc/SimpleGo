@@ -1,6 +1,7 @@
-package Router
+package simplego
 
 import (
+	"SimpleGo/simplego/session"
 	"html/template"
 	"net/http"
 	"net/url"
@@ -54,4 +55,9 @@ func (c *Controller) Input() url.Values {
 		c.Ctx.R.ParseForm()
 	}
 	return c.Ctx.R.Form
+}
+
+func (c *Controller) GetSession() session.Session {
+	session := GetGlobelSession().StartSession(c.Ctx.W, c.Ctx.R)
+	return session
 }

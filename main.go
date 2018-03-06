@@ -3,18 +3,25 @@ package main
 import (
 	"SimpleGo/controllers"
 	"SimpleGo/simplego"
+	_ "SimpleGo/simplego/session/session_memory"
 	"fmt"
-	"html/template"
-	"net/http"
 )
 
 type testInterface interface {
 	TestA(*testReflect, string)
 }
 
+type test struct {
+	AA int
+	BB int
+}
+
 type testReflect struct {
-	A string
-	b string
+	Test1 test
+	Test2 *test
+	A     string
+	b     string
+	c     map[string]string
 }
 
 func (test *testReflect) TestA(s *testReflect, a string) {
@@ -26,27 +33,14 @@ func (test testReflect) TestB() {
 }
 
 func main() {
+	// test := &testReflect{c: make(map[string]string, 1)}
+	// fmt.Println(test)
+	// test.c["a"] = "b"
+	// fmt.Println(test.c)
+
 	simplego.SetStaticPath("/asset", "uploads")
 
 	simplego.Add("/", &controllers.LYLoginController{})
-	simplego.Get("/hello", func(w http.ResponseWriter, r *http.Request) {
-		// expiration := time.Now()
-		// expiration = expiration.AddDate(1, 0, 0)
-		// cookie := &http.Cookie{Name: "dianping", Value: "222222", Expires: expiration, Path: "/"}
-		// http.SetCookie(w, cookie)
-
-		cookies := r.Cookies()
-		for _, cookie := range cookies {
-			fmt.Println(cookie.Name, cookie.Value)
-		}
-
-		if t, error := template.ParseFiles("views/login.html"); error == nil {
-			t.Execute(w, nil)
-		}
-	})
-	simplego.Post("/hello", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "hellor world!")
-	})
 	simplego.Add("/aaa/bbb/:id([\\w]+)/:username([1-9]+)", &controllers.LYLoginController{})
 	simplego.Run()
 

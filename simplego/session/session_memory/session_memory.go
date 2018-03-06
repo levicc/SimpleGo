@@ -1,24 +1,18 @@
-package session
+package session_memory
 
 import (
+	"SimpleGo/simplego/session"
 	"container/list"
 	"sync"
 	"time"
 )
 
-type Session interface {
-	Set(key, value interface{})
-	Get(key interface{}) interface{}
-	Delete(key interface{})
-	SessionId() string
+var memoryProvider = &SessionProvide{lruList: list.New(), sessionMap: make(map[string]*list.Element, 0)}
+
+func init() {
+	session.Register("memory", memoryProvider)
 }
 
-type Provide interface {
-	SessionInit(sid string) (Session, error)
-	SessionRead(sid string) (Session, error)
-	SessionDelete(sid string) error
-	SessionGC(maxLifeTime int64)
-}
 type SessionStroe struct {
 	sid         string
 	value       map[interface{}]interface{}
@@ -26,10 +20,12 @@ type SessionStroe struct {
 }
 
 func (store *SessionStroe) Set(key, value interface{}) {
+	memoryProvider.SessionUpdate(store.sid)
 	store.value[key] = value
 }
 
 func (store *SessionStroe) Get(key interface{}) interface{} {
+	memoryProvider.SessionUpdate(store.sid)
 	if v, ok := store.value[key]; ok {
 		return v
 	}
@@ -37,6 +33,7 @@ func (store *SessionStroe) Get(key interface{}) interface{} {
 }
 
 func (store *SessionStroe) Delete(key interface{}) {
+	memoryProvider.SessionUpdate(store.sid)
 	delete(store.value, key)
 }
 
@@ -50,7 +47,7 @@ type SessionProvide struct {
 	lruList    *list.List
 }
 
-func (provide *SessionProvide) SessionInit(sid string) (Session, error) {
+func (provide *SessionProvide) SessionInit(sid string) (session.Session, error) {
 	provide.lock.Lock()
 	defer provide.lock.Unlock()
 
@@ -62,7 +59,7 @@ func (provide *SessionProvide) SessionInit(sid string) (Session, error) {
 	return session, nil
 }
 
-func (provide *SessionProvide) SessionRead(sid string) (Session, error) {
+func (provide *SessionProvide) SessionRead(sid string) (session.Session, error) {
 	provide.lock.Lock()
 	defer provide.lock.Unlock()
 
@@ -102,6 +99,11 @@ func (provide *SessionProvide) SessionGC(maxLifeTime int64) {
 
 	for {
 		elem := provide.lruList.Back()
+
+		if elem == nil {
+			break
+		}
+
 		session := elem.Value.(*SessionStroe)
 		if time.Now().Unix()-session.timeAccessd.Unix() <= maxLifeTime {
 			break
