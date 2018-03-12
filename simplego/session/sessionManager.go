@@ -19,7 +19,7 @@ type Session interface {
 }
 
 type Provide interface {
-	SessionInit(sid string) (Session, error)
+	SessionInit(sid string, maxLifetime int64) (Session, error)
 	SessionRead(sid string) (Session, error)
 	SessionDelete(sid string) error
 	SessionGC(maxLifeTime int64)
@@ -66,7 +66,7 @@ func (manager *SessionManager) StartSession(w http.ResponseWriter, r *http.Reque
 
 	if err != nil || cookie.Value == "" {
 		sid := manager.SessionId()
-		session, _ = manager.provide.SessionInit(sid)
+		session, _ = manager.provide.SessionInit(sid, manager.maxLifeTime)
 		http.SetCookie(w, &http.Cookie{
 			Name:  manager.cookieName,
 			Value: url.QueryEscape(sid),

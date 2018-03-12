@@ -17,14 +17,21 @@ type SessionStroe struct {
 	sid         string
 	value       map[interface{}]interface{}
 	timeAccessd time.Time
+	lock        sync.Mutex
 }
 
 func (store *SessionStroe) Set(key, value interface{}) {
+	store.lock.Lock()
+	defer store.lock.Unlock()
+
 	memoryProvider.SessionUpdate(store.sid)
 	store.value[key] = value
 }
 
 func (store *SessionStroe) Get(key interface{}) interface{} {
+	store.lock.Lock()
+	defer store.lock.Unlock()
+
 	memoryProvider.SessionUpdate(store.sid)
 	if v, ok := store.value[key]; ok {
 		return v
@@ -33,6 +40,9 @@ func (store *SessionStroe) Get(key interface{}) interface{} {
 }
 
 func (store *SessionStroe) Delete(key interface{}) {
+	store.lock.Lock()
+	defer store.lock.Unlock()
+
 	memoryProvider.SessionUpdate(store.sid)
 	delete(store.value, key)
 }
@@ -42,12 +52,13 @@ func (store *SessionStroe) SessionId() string {
 }
 
 type SessionProvide struct {
-	lock       sync.Mutex
-	sessionMap map[string]*list.Element
-	lruList    *list.List
+	lock        sync.Mutex
+	sessionMap  map[string]*list.Element
+	lruList     *list.List
+	maxLifeTime int64
 }
 
-func (provide *SessionProvide) SessionInit(sid string) (session.Session, error) {
+func (provide *SessionProvide) SessionInit(sid string, maxLifeTime int64) (session.Session, error) {
 	provide.lock.Lock()
 	defer provide.lock.Unlock()
 
@@ -55,6 +66,7 @@ func (provide *SessionProvide) SessionInit(sid string) (session.Session, error) 
 	session := &SessionStroe{sid: sid, value: value, timeAccessd: time.Now()}
 	elem := provide.lruList.PushFront(session)
 	provide.sessionMap[sid] = elem
+	provide.maxLifeTime = maxLifeTime
 
 	return session, nil
 }
@@ -66,7 +78,7 @@ func (provide *SessionProvide) SessionRead(sid string) (session.Session, error) 
 	if elem, ok := provide.sessionMap[sid]; ok {
 		return elem.Value.(*SessionStroe), nil
 	} else {
-		return provide.SessionInit(sid)
+		return provide.SessionInit(sid, provide.maxLifeTime)
 	}
 
 	return nil, nil
