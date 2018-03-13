@@ -52,7 +52,7 @@ func (store *SessionStroe) SessionId() string {
 }
 
 type SessionProvide struct {
-	lock        sync.Mutex
+	lock        sync.RWMutex
 	sessionMap  map[string]*list.Element
 	lruList     *list.List
 	maxLifeTime int64
@@ -72,8 +72,8 @@ func (provide *SessionProvide) SessionInit(sid string, maxLifeTime int64) (sessi
 }
 
 func (provide *SessionProvide) SessionRead(sid string) (session.Session, error) {
-	provide.lock.Lock()
-	defer provide.lock.Unlock()
+	// provide.lock.Lock()
+	// defer provide.lock.Unlock()
 
 	if elem, ok := provide.sessionMap[sid]; ok {
 		return elem.Value.(*SessionStroe), nil

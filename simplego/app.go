@@ -33,7 +33,7 @@ func GetGlobelSession() *session.SessionManager {
 }
 
 func (app *App) Run() {
-	http.ListenAndServe("127.0.0.1:9091", SimpleApp.Handlers)
+	http.ListenAndServe("127.0.0.1:9090", SimpleApp.Handlers)
 }
 
 func Run() {

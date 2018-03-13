@@ -5,6 +5,7 @@ import (
 	"SimpleGo/simplego"
 	_ "SimpleGo/simplego/session/session_memory"
 	"fmt"
+	_ "net/http/pprof"
 )
 
 type testInterface interface {
@@ -42,6 +43,8 @@ func main() {
 
 	simplego.Add("/", &controllers.LYLoginController{})
 	simplego.Add("/aaa/bbb/:id([\\w]+)/:username([1-9]+)", &controllers.LYLoginController{})
+	simplego.Add("/debug/pprof", &controllers.ProfController{})
+	simplego.Add("/debug/pprof/:pp([\\w]+)", &controllers.ProfController{})
 	simplego.Run()
 
 	//指针初始化为零值指针，这个是问题的根源
